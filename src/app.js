@@ -17,14 +17,14 @@ app.use(bodyParser.json());
 app.use(cors());
 
 // Set up routes
-// setRoutes(app);
-const userRouter = require("./modules/userModule/user.route");
-app.use("/user", userRouter);
+setRoutes(app);
+// const userRouter = require("./modules/userModule/user.route");
+// app.use("/user", userRouter);
 
 // Global error handling
 app.use((err, req, res, next) => {
-  res.status(500).json({
-    error: err.toString(),
+  res.status(err.status || 500).json({
+    errors: err.message || "Server encountered an error",
   });
 });
 
