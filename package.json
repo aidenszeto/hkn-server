@@ -19,6 +19,7 @@
     "prettier": "^2.3.2"
   },
   "dependencies": {
+    "aws-sdk": "^2.978.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^10.0.0",

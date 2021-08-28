@@ -1,5 +1,5 @@
 const { validationResult } = require("express-validator");
-const userService = require("./user.service")();
+const UserService = require("./user.service");
 const { getUserToken, passGenService } = require("../../utils/auth.utils");
 
 const userController = () => {
@@ -19,8 +19,8 @@ const userController = () => {
         req.body;
 
       if (
-        userService.findByUCLAEmail(uclaEmail) ||
-        userService.findByPersonalEmail(personalEmail)
+        UserService.findByUCLAEmail(uclaEmail) ||
+        UserService.findByPersonalEmail(personalEmail)
       ) {
         const err = {
           message: "Account with provided email already exists",
@@ -39,12 +39,12 @@ const userController = () => {
         password: encryptedPassword,
       };
 
-      const newUser = userService.create(user);
-      const token = getUserToken({ id: newUser.id });
-
-      res.status(200).send({
-        newUser,
-        token,
+      UserService.create(user, (newUser) => {
+        const token = getUserToken({ id: newUser.id });
+        res.status(200).send({
+          newUser,
+          token,
+        });
       });
     } catch (err) {
       next(err);
