@@ -1,6 +1,10 @@
 const { validationResult } = require("express-validator");
 const UserService = require("./user.service");
-const { getUserToken, passGenService } = require("../../utils/auth.utils");
+const {
+  getUserToken,
+  passGenService,
+  validatePassword,
+} = require("../../utils/auth.utils");
 
 const userController = () => {
   signup = async (req, res, next) => {
@@ -18,33 +22,65 @@ const userController = () => {
       const { firstName, lastName, uclaEmail, personalEmail, password } =
         req.body;
 
-      if (
-        UserService.findByUCLAEmail(uclaEmail) ||
-        UserService.findByPersonalEmail(personalEmail)
-      ) {
-        const err = {
-          message: "Account with provided email already exists",
-          status: 400,
-        };
-        next(err);
-      }
+      UserService.checkExisting(uclaEmail, personalEmail, async (data) => {
+        if (data) {
+          const err = {
+            message: "Account with provided email already exists",
+            status: 401,
+          };
+          next(err);
+        } else {
+          const encryptedPassword = await passGenService(password);
 
-      const encryptedPassword = await passGenService(password);
+          const user = {
+            firstName: firstName,
+            lastName: lastName,
+            uclaEmail: uclaEmail,
+            personalEmail: personalEmail,
+            password: encryptedPassword,
+          };
 
-      const user = {
-        firstName: firstName,
-        lastName: lastName,
-        uclaEmail: uclaEmail,
-        personalEmail: personalEmail,
-        password: encryptedPassword,
-      };
+          UserService.create(user, (newUser) => {
+            const token = getUserToken({ id: newUser.id });
+            res.status(200).send({
+              newUser,
+              token,
+            });
+          });
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
 
-      UserService.create(user, (newUser) => {
-        const token = getUserToken({ id: newUser.id });
-        res.status(200).send({
-          newUser,
-          token,
+  login = async (req, res, next) => {
+    try {
+      const { personalEmail, password } = req.body;
+      UserService.getAll((data) => {
+        const users = data.Items.map((user) => {
+          if (user.personalEmail === personalEmail) {
+            if (!validatePassword(password, user.password)) {
+              const err = {
+                message: "Invalid password",
+                status: 401,
+              };
+              next(err);
+            }
+            const token = getUserToken(user);
+            res.status(200).send({
+              user,
+              token,
+            });
+          }
         });
+        if (users.length === 0) {
+          const err = {
+            message: "User email does not exist",
+            status: 404,
+          };
+          next(err);
+        }
       });
     } catch (err) {
       next(err);
@@ -52,11 +88,18 @@ const userController = () => {
   };
 
   get = async (req, res, next) => {
-    res.status(200).send("success");
+    try {
+      UserService.getAll((data) => {
+        res.status(200).send(data);
+      });
+    } catch (err) {
+      next(err);
+    }
   };
 
   return {
     signup,
+    login,
     get,
   };
 };
